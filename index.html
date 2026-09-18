@@ -238,21 +238,30 @@ footer{margin-top:30px;font-size:0.78rem;color:var(--grav);line-height:1.6;borde
 
   <footer>
     Sålda påsar av Redhead-chips 150 g och Korkat 100 g, rapporterade av butiken själv
-    med utdrag ur kassan. Indextalet är påsar per miljon kronor i butiksomsättning 2025 —
-    omsättningen i sig visas aldrig här och lämnar aldrig Redhead.<br>
+    med utdrag ur kassan. Redhead stämmer av siffrorna mot vad butiken köpt hem.<br>
+    Indexklassen väger påsarna mot butikens omsättning 2025. Bara ordningen visas,
+    aldrig talet och aldrig omsättningen — vi vill inte att någon ska kunna räkna
+    baklänges på din butik.<br>
     Frågor: joakim@redhead.se
   </footer>
 </div>
 
 <script>
-const PAKET = {"salt": "Cv5nZJC4XwtS0ztoIgkpxQ==", "nonce": "/s8dgZHFJavWHe67", "data": "MYGVThfB9Y7dMrEEgsfXHrd+Ys7K78goVeGKZW6tBdlsSo21Qd5MLgMi9nCmui/uAhrx2UUbm9ZNd8x0Vpr9sY8cgOP+tR966Q+lIXRHlr/QCJo+FE+qJZcz73SC2mIJ/Nnrehs1SqSvmjHurrwOT/VVx9K7xz3spVcq3mbofeq+GJQVQVgLlM9PA6NmZLd50p7FySwa3weOsBSy289EVVdMnuqmm1jCxwbavVpftR0Wp8KTmLL13XRQeB0eRHzJPbZrMFQI34worz3DvT7zohFAm+spAecJMqZeIEUU1CNffWAncBVrD90cMOQMhup5IcQkRFhh/NYBsZgBCts0klcxnV/Yz51Uc3kOvsQP5ERqBIphJZn13hdGPAdN1Rc/irNjp2FeJjE5LkYHM0onzNXisPOoEN2oMXfwC9vcWAHzhru8TLY2cfJdyn/R9ImLCNGDOiZBsAA+Eov64gS1qw47xLHkx89UkJyTc3qkslNEhOB0v+CJCcrQ3mfvcD7boM0SPCYB2eX8vuh7YYCEp3QEqeZHG4+WQUEZc0FcKDUzpS7CeEPQJF2bUJVsBhtDhNj25qZzX939RvROI96S0BzzvrhJXln1cVShDHH8ecJ3PJ7YAFDOx2S/lNbKGw==", "varv": 250000};
+const PAKET = {"salt": "47XZJU7JKccnyHj9RdGetA==", "nonce": "Dq35bnPXKNA7AhmF", "data": "COeISHZ9013HRw691mmrt6yNv3yaxHOri3Uv+a1RlEInDKH4nygk0argIoHpu0vbL7JH7RIrwBL4YBiLhsWbvMlcrtIaibHjSh9PRD28222d8am2SH6FLYWI+HU+XKiCsrY3OH9YggQI8kTtwEt0sWfjbNQuUvW4cEoLWJyc6F5phA/q003tzVjHDvLN0fcC+ySVh57LrSa3tSh9HD7B0kc0X4Gdt36JTJzL2jCwhmJWqHbJNjgz6Bj+jP/8WQ/F0Zb6W90F9jXSICOdCkSo2573d6m5YH6mCzjFQNkQ5vgtpQxCsJptje2ucv2Dw4qVdX2W4CIyE00GMw+ziRvF5Ojo2EjhLaNsB/TL6ERhpudgoCNVcfGzTfvwu/IFJ3Rqse1q6TRgZS9b7cqVvjJPRXA0XBlXNXGJjc4S4uccjlXHGFg/RRO3q4mnSmLqQ/6qbQ6nUF5svy23Snt1PIWYTP6pmvicnoOJ+5if+d4cRzgyGhCYrfm9GgjlYvk4sUAlUDVubakLW3IwL/G9gRje3Dndbdblq90pG/RvvmV1Yc4C38fZ6neYthr5O4GHE1zY02IO2DtVlkb85Df8797tChEsQ3sX0JmHIJ3v5zz7rogWQaNaylcuW9e4zASyfw==", "varv": 250000};
 const NYCKEL_LAGRING = "high-five-ligan-2026";
+// sessionStorage, inte localStorage: lösenordet ska dö med fliken.
+// joakim-dot.github.io är EN origin för alla våra Pages-sidor.
+const LAGER = window.sessionStorage;
 
 let DATA = null;
 let valdAvstamning = null;
 let valdKlass = "volym";
 
 const fromB64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+
+// Butiksnamn och ort kommer från ett formulär vem som helst kan fylla i.
+const esc = s => String(s ?? "").replace(/[&<>"']/g,
+  c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
 async function lasUpp(losenord){
   const material = await crypto.subtle.importKey(
@@ -308,7 +317,9 @@ function rita(){
 
   forklaring.textContent = valdKlass === "volym"
     ? `Flest sålda påsar totalt. Perioden som räknas: ${period.toLowerCase()}.`
-    : `Flest påsar per miljon kronor i butiksomsättning 2025. Perioden som räknas: ${period.toLowerCase()}.`;
+    : `Flest påsar i förhållande till butikens storlek. Perioden som räknas: ${period.toLowerCase()}. `
+      + `Bara ordningen visas — själva indextalet håller vi för oss själva, `
+      + `annars går din omsättning att räkna ut.`;
 
   if (!rader.length){
     lista.innerHTML = `<div class="tomt"><strong>Inget att visa än</strong>
@@ -319,15 +330,17 @@ function rita(){
   forklaring.hidden = false;
 
   lista.innerHTML = rader.map((r, i) => {
+    // Indexklassen får INGET tal. Med påsar i ena fliken och index i den andra
+    // är omsättningen påsar ÷ index, och det lovade vi butiken att aldrig visa.
     const varde = valdKlass === "volym"
       ? `${r.pasar.toLocaleString("sv-SE")}<small>påsar</small>`
-      : `${r.index.toLocaleString("sv-SE")}<small>påsar / Mkr</small>`;
+      : "";
     const flagga = r.komplett ? "" :
       `<span class="ofullstandig">saknar en månad</span>`;
     return `<div class="rad ${i < 3 ? "rad--" + (i + 1) : ""}">
       <div class="plats">${i + 1}</div>
-      <div class="namn"><strong>${r.butik}</strong>
-        <span>${r.ort || ""}</span>${flagga}</div>
+      <div class="namn"><strong>${esc(r.butik)}</strong>
+        <span>${esc(r.ort)}</span>${flagga}</div>
       <div class="varde">${varde}</div>
     </div>`;
   }).join("");
@@ -341,12 +354,20 @@ document.getElementById("form").addEventListener("submit", async e => {
     fel.textContent = "Sidan måste öppnas över https för att kunna låsas upp.";
     return;
   }
+  let data;
   try {
-    const data = await lasUpp(document.getElementById("losen").value.trim());
-    try { localStorage.setItem(NYCKEL_LAGRING, document.getElementById("losen").value.trim()); } catch {}
-    visa(data);
+    data = await lasUpp(document.getElementById("losen").value.trim());
   } catch {
     fel.textContent = "Fel lösenord.";
+    return;
+  }
+  try { LAGER.setItem(NYCKEL_LAGRING, document.getElementById("losen").value.trim()); } catch {}
+  try {
+    visa(data);
+  } catch (e) {
+    // Gick dekrypteringen bra men renderingen sönder är det VÅRT fel, inte butikens.
+    fel.textContent = "Lösenordet stämde, men sidan kunde inte visas. Hör av dig till joakim@redhead.se.";
+    console.error(e);
   }
 });
 
@@ -354,10 +375,10 @@ document.getElementById("form").addEventListener("submit", async e => {
 (async () => {
   if (!window.crypto?.subtle) return;
   let sparat = null;
-  try { sparat = localStorage.getItem(NYCKEL_LAGRING); } catch {}
+  try { sparat = LAGER.getItem(NYCKEL_LAGRING); } catch {}
   if (!sparat) return;
   try { visa(await lasUpp(sparat)); }
-  catch { try { localStorage.removeItem(NYCKEL_LAGRING); } catch {} }
+  catch { try { LAGER.removeItem(NYCKEL_LAGRING); } catch {} }
 })();
 </script>
 </body>
